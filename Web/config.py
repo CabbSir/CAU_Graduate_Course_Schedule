@@ -1,36 +1,31 @@
-import os
-
-basedir = os.path.abspath(os.path.dirname(__file__))
-
-
 class Config:
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess string'
+    SECRET_KEY = 'dssdfhs2sdd21k238sdfaksfaf32rf3'
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
 
     @staticmethod
     def init_app(app):
         pass
 
 
-class DevelopmentConfig(Config):
+class DevConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'data-dev.db')
+    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_dev?charset=utf8'
 
 
-class TestingConfig(Config):
+class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URL') or 'sqlite:///' + os.path.join(basedir,
-                                                                                                 'data-test.db')
+    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_test?charset=utf8'
 
 
-class ProductionConfig(Config):
-    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'data.db')
+class OnlineConfig(Config):
+    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_online?charset=utf8'
 
 
 config = {
-    'development': DevelopmentConfig,
-    'testing': TestingConfig,
-    'production': ProductionConfig,
-
-    'default': DevelopmentConfig
+    'development': DevConfig,
+    'testing': TestConfig,
+    'production': OnlineConfig,
+    # 默认配置
+    'default': DevConfig
 }
