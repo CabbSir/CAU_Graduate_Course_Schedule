@@ -4,10 +4,6 @@ page_bp = Blueprint('page_bp', __name__)
 
 
 @page_bp.route('/')
-def index():
-    return "Hello World!"
-
-
 @page_bp.route('/login')
 def login():
     return render_template("login.html")
