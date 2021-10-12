@@ -1,5 +1,5 @@
-from .home import home_bp
+from .page import page_bp
 
 
 def init_app(app):
-    app.register_blueprint(home_bp)
+    app.register_blueprint(page_bp)
