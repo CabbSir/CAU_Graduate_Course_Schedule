@@ -10,16 +10,16 @@ class Config:
 
 class DevConfig(Config):
     DEBUG = True
-    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_dev?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:root@127.0.0.1:3306/schedule_dev?charset=utf8'
 
 
 class TestConfig(Config):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_test?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:root@127.0.0.1:3306/schedule_test?charset=utf8'
 
 
 class OnlineConfig(Config):
-    SQLALCHEMY_DATABASE_URI = 'mysql://root:root@127.0.0.1:3306/schedule_online?charset=utf8'
+    SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://root:root@127.0.0.1:3306/schedule_online?charset=utf8'
 
 
 config = {

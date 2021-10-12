@@ -11,7 +11,7 @@
 
     <!-- Custom styles for this template-->
     <link href="../static/css/bootstrap.min.css" rel="stylesheet">
-
+    <link href="../static/css/bootstrapValidator.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -53,16 +53,67 @@
     <p class="lead">只需要在下面输入一个独一无二的用户名即可 <code>注册什么的最烦了</code></p>
 
     <div class="form-group">
-        <input type="text" class="form-control" id="username_no_autofill" placeholder="建议用邮箱" autocomplete="off">
+        <form id="nameForm">
+            <input type="text" name="username" class="form-control" id="username_no_autofill" placeholder="建议用邮箱"
+                   autocomplete="off">
+        </form>
     </div>
-    <button type="button" class="btn btn-default">就这样，下一步</button>
+    <button type="button" class="btn btn-default" onclick="register()">就这样，下一步</button>
 </div>
 <!-- Bootstrap core JavaScript-->
 <script src="../static/js/jquery-3.6.0.min.js"></script>
 <script src="../static/js/bootstrap.min.js"></script>
-
+<script src="../static/js/validator.min.js"></script>
 <script>
+    $(function () {
+        $('#nameForm').bootstrapValidator({
+            feedbackIcons: {
+                valid: 'glyphicon glyphicon-ok',
+                invalid: 'glyphicon glyphicon-remove',
+                validating: 'glyphicon glyphicon-refresh'
+            },
+            fields: {
+                username: {
+                    validators: {
+                        notEmpty: {
+                            message: '名字不能为空'
+                        },
+                        stringLength: {
+                            min: 2,
+                            max: 100,
+                            message: '名字最短长度为2'
+                        },
+                        remote: {
+                            url: '/console/check_name',
+                            message: "这个名字已经有人用了",
+                            type: 'GET',
+                            delay: 500
+                        }
+                    }
+                }
+            }
+        })
+    })
 
+    function register() {
+        $("#nameForm").data('bootstrapValidator').validate();
+        if ($("#nameForm").data('bootstrapValidator').isValid()) {
+            $.ajax({
+                url: '/console/register',
+                type: 'POST',
+                data: $("#nameForm").serialize(),
+                dataType: 'json',
+                success: function (data) {
+                    if (data.code === 0) {
+                        // 注册成功
+                        window.location.href = "/user_info";
+                    } else {
+                        alert(data.message);
+                    }
+                }
+            });
+        }
+    }
 </script>
 </body>
 
