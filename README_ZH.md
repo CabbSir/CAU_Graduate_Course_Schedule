@@ -3,9 +3,17 @@
 
 #### [English Version](./README.md)
 
-# 网页端
+## 网页端
 - Flask (后期将会改成golang)
 - Bootstrap
 - Mysql
 
 ## Android APP (开发中)
+
+## 处理流程
+- 获取cookie
+- 拿着cookie获取验证码
+- 教务用户名 密码 验证码 模拟登录
+- 登陆成功 跳转课程表页面解析数据入库
+- 上一步中没有标出时间的课程，去开课时间中查询并入库
+- 显示即可
