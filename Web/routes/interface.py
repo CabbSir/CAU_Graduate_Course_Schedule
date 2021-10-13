@@ -10,16 +10,15 @@ import time
 interface_bp = Blueprint('interface_bp', __name__)
 
 
-@interface_bp.route('/console/login_status')
-def login_status():
-    if not session.get("user_id"):
+@interface_bp.route('/console/is_login')
+def is_login():
+    if not session.get("login_user_id"):
         # 不存在session
         return JsonReturn.error(ErrorMap.NOT_LOGGED)
-    # 有 session 查询数据库
-    user_id = session.get("user_id")
+    return JsonReturn.success(session.get("login_user_id"))
 
 
-# 检查用户名是否被使用了
+# 检查用户名是否被使用了 @Deprecated
 @interface_bp.route('/console/check_name')
 def check_name():
     username = request.args.get('username')
