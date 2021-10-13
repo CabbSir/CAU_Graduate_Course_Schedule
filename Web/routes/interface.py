@@ -1,7 +1,7 @@
 import base64
 
 import requests
-from flask import Blueprint, session, request
+from flask import Blueprint, session, request, render_template
 
 from ..models.user import User, db
 from ..utils import ErrorMap, JsonReturn, functions
@@ -16,6 +16,12 @@ def is_login():
         # 不存在session
         return JsonReturn.error(ErrorMap.NOT_LOGGED)
     return JsonReturn.success(session.get("login_user_id"))
+
+
+@interface_bp.route('/console/logout')
+def logout():
+    session.clear()
+    return render_template('user_info.html')
 
 
 # 检查用户名是否被使用了 @Deprecated

@@ -37,7 +37,7 @@
                        aria-expanded="false">Coming soon <span class="caret"></span></a>
                     <ul class="dropdown-menu">
                         <li><a href="/app">APP下载</a></li>
-                        <li><a href="/console/logout">登出</a></li>
+                        <li id="li"></li>
                     </ul>
                 </li>
             </ul>
@@ -59,7 +59,22 @@
 <script src="../static/js/bootstrap.min.js"></script>
 
 <script>
-
+    $(function (){
+        isLogin()
+    })
+    function isLogin() {
+        $.ajax({
+            url: 'console/is_login',
+            type: 'GET',
+            success: function (data) {
+                if (data.code === 0) {
+                    // 已经登录了
+                    let a = $("<a></a>").attr('href', '/console/logout').append("登出");
+                    a.appendTo("#li");
+                }
+            }
+        })
+    }
 </script>
 </body>
 
