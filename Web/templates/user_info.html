@@ -64,6 +64,7 @@
         <div class="form-group">
             <label for="captcha">验证码</label>
             <input type="number" class="form-control" id="captcha">
+            <img id="image" src="/console/captcha" onclick="captcha()">
         </div>
         <button id="loginBtn" onclick="login()" type="button" class="btn btn-default">登录</button>
     </div>
@@ -77,6 +78,17 @@
     function login() {
         alert(hex_md5($("#j_password").val(), "null"));
     }
+
+    function captcha() {
+        $.ajax({
+            url: '/console/captcha',
+            type: 'GET',
+            success: function (data) {
+                $('#image').attr('src', data);
+            }
+        })
+    }
+
 </script>
 </body>
 
