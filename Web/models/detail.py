@@ -3,7 +3,7 @@ import time
 from . import db
 
 
-class Detail:
+class Detail(db.Model):
     __tablename__ = 'tb_detail'
     id = db.Column(db.Integer, primary_key = True, nullable = False)
     weekday = db.Column(db.String(10), nullable = False)
