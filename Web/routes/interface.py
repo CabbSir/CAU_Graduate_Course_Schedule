@@ -93,4 +93,55 @@ def captcha():
 # 教务登录
 @interface_bp.route('/console/login', methods = ['POST'])
 def login():
-    cookie = get_cookie()
+    # 先验证参数
+    name = request.form.get('j_username')
+    passwd = request.form.get('md5_passwd')
+    captcha_text = request.form.get('captcha_text')
+
+    if name == "" or passwd == "" or len(captcha_text) != 5:
+        return JsonReturn.error(ErrorMap.PARAM_INVALID)
+
+    # 从session中获取cookie
+    cookie = session.get("cookie")
+    url = "http://gradinfo.cau.edu.cn/j_acegi_security_check"
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'zh,zh-CN;q=0.9',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'Content-Length': '93',
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Cookie': cookie,
+        'Host': 'gradinfo.cau.edu.cn',
+        'Origin': 'http://gradinfo.cau.edu.cn',
+        'Referer': 'http://gradinfo.cau.edu.cn/index.do',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36'
+    }
+    data = {
+        'j_username': name,
+        'j_password': passwd,
+        'j_captcha': captcha_text,
+        'groupId': ''
+    }
+    ret = requests.post(url, data, headers = headers)
+    html = ret.text
+    if html.find("研究生综合管理系统第二版") == -1:
+        return JsonReturn.error(ErrorMap.LOGIN_ERROR)
+    # 如果正确登入，先入库，然后保存session一个月
+    ip = functions.get_real_ip()
+    login_time = int(time.time())
+    create_time = int(time.time())
+    modify_time = int(time.time())
+    # 这里存储的是经过md5处理的密码
+    user = User(j_name = name, j_passwd = passwd, last_login_ip = ip, last_login_time = login_time,
+                create_time = create_time, modify_time = modify_time)
+    db.session.add(user)
+    db.session.commit()
+    # 提交后获取自增id
+    user_id = user.id
+    session.permanent = True
+    session['login_user_id'] = user_id
+    session['login_user_name'] = name
+    return JsonReturn.success()

@@ -54,25 +54,39 @@
     <p class="lead">声明：本站不会明文存储您的<code>任何密码</code>且不会利用您的账号进行任何其他操作</p>
     <p><code>如仍有顾虑，请谨慎使用</code></p>
     <div>
-        <div class="form-group">
-            <label for="j_username">教务处用户名</label>
-            <input type="text" class="form-control" name="j_username" id="j_username">
-        </div>
-        <div class="form-group">
-            <label for="j_password">教务处密码</label>
-            <input type="password" class="form-control" id="j_password" name="j_password" autocomplete="off">
-        </div>
-        <div class="form-group">
-            <label for="captcha">验证码</label>
-            <div class="form-inline">
-
-                    <input type="number" class="form-control" id="captcha" name="captcha">
-                    <img id="image" onclick="captcha()">
-
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="j_username">教务处用户名</label>
+                <input type="text" class="form-control" name="j_username" id="j_username">
             </div>
-        </div>
-        <button id="loginBtn" onclick="login()" type="button" class="btn btn-default">登录</button>
+            <div class="form-group">
+                <label for="j_password">教务处密码</label>
+                <input type="password" class="form-control" id="j_password" name="j_password" autocomplete="off">
+            </div>
+            <input id="md5_passwd" name="md5_passwd" hidden>
+            <div class="form-group">
+                <label for="captcha_text">验证码</label>
+                <div class="form-inline">
+                    <input type="text" class="form-control" id="captcha_text" name="captcha_text">
+                    <img id="image" src="" onclick="captcha()" alt="" class="img-thumbnail">
+                </div>
+            </div>
+            <button id="loginBtn" onclick="login()" type="button" class="btn btn-default">登录</button>
+        </form>
+
     </div>
+</div>
+<div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+  <div class="modal-dialog modal-sm" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h4 class="modal-title" id="myModalLabel">登入成功</h4>
+      </div>
+      <div class="modal-body">
+        正在生成课表，请稍后...
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Bootstrap core JavaScript-->
@@ -81,12 +95,67 @@
 <script src="../static/js/md5.js"></script>
 <script src="../static/js/validator.min.js"></script>
 <script>
-    $(function (){
+    $(function () {
         captcha();
+        $('#loginForm').bootstrapValidator({
+            feedbackIcons: {
+                valid: 'glyphicon glyphicon-ok',
+                invalid: 'glyphicon glyphicon-remove',
+                validating: 'glyphicon glyphicon-refresh'
+            },
+            fields: {
+                j_username: {
+                    validators: {
+                        notEmpty: {
+                            message: '名字不能为空'
+                        }
+                    }
+                },
+                j_password: {
+                    validators: {
+                        notEmpty: {
+                            message: '密码不能为空'
+                        }
+                    }
+                },
+                captcha_text: {
+                    validators: {
+                        notEmpty: {
+                            message: '验证码不能为空'
+                        },
+                        stringLength: {
+                            min: 5,
+                            max: 5,
+                            message: '验证码是5位数字'
+                        },
+                    }
+                }
+            }
+        });
     });
 
     function login() {
-        alert(hex_md5($("#j_password").val(), "null"));
+        $("#loginForm").data('bootstrapValidator').validate();
+        if ($("#loginForm").data('bootstrapValidator').isValid()) {
+            $('#md5_passwd').val(hex_md5($("#j_password").val(), "null"));
+            $.ajax({
+                url: '/console/login',
+                type: 'POST',
+                data: $('#loginForm').serialize(),
+                dataType: 'json',
+                success: function (data) {
+                    if (data.code === 0) {
+                        // 登录成功，先显示一个等待框
+                        $('#myModal').modal({
+                            'keyboard': false,
+                            'backdrop': 'static'
+                        });
+                    } else {
+                        alert("登入失败，请检查输入项，注意如果密码错误5次会被禁止登陆一天")
+                    }
+                }
+            });
+        }
     }
 
     function captcha() {
