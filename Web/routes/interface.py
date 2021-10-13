@@ -128,18 +128,22 @@ def login():
     html = ret.text
     if html.find("研究生综合管理系统第二版") == -1:
         return JsonReturn.error(ErrorMap.LOGIN_ERROR)
-    # 如果正确登入，先入库，然后保存session一个月
-    ip = functions.get_real_ip()
-    login_time = int(time.time())
-    create_time = int(time.time())
-    modify_time = int(time.time())
-    # 这里存储的是经过md5处理的密码
-    user = User(j_name = name, j_passwd = passwd, last_login_ip = ip, last_login_time = login_time,
-                create_time = create_time, modify_time = modify_time)
-    db.session.add(user)
-    db.session.commit()
-    # 提交后获取自增id
-    user_id = user.id
+    # 如果正确登入，先判断入库
+    if not User.query.filter_by(j_name = name).first():
+        ip = functions.get_real_ip()
+        login_time = int(time.time())
+        create_time = int(time.time())
+        modify_time = int(time.time())
+        # 这里存储的是经过md5处理的密码
+        user = User(j_name = name, j_passwd = passwd, last_login_ip = ip, last_login_time = login_time,
+                    create_time = create_time, modify_time = modify_time)
+        db.session.add(user)
+        db.session.commit()
+        # 提交后获取自增id
+        user_id = user.id
+    else:
+        user_id = User.query.filter_by(j_name = name).first().id
+    # 然后保存session一个月
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
