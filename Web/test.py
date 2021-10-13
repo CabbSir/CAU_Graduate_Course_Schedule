@@ -26,4 +26,6 @@ if __name__ == '__main__':
         'Referer': 'http://gradinfo.cau.edu.cn/index.do',
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36'
     }
-    print('data:image/jpeg' + base64.b64encode(requests.get(url, headers = headers).content))
+    ret = requests.get(url, headers=headers)
+    base64_data = base64.b64encode(ret.content)
+    print("data:image/png;base64," + str(base64_data, encoding = "utf-8"))

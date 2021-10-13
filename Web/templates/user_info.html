@@ -11,6 +11,7 @@
 
     <!-- Custom styles for this template-->
     <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../static/css/bootstrapValidator.min.css" rel="stylesheet">
 
 </head>
 
@@ -51,20 +52,24 @@
         <h1>教务登录</h1>
     </div>
     <p class="lead">声明：本站不会明文存储您的<code>任何密码</code>且不会利用您的账号进行任何其他操作</p>
-    <p>如仍有顾虑，请谨慎使用</p>
+    <p><code>如仍有顾虑，请谨慎使用</code></p>
     <div>
         <div class="form-group">
             <label for="j_username">教务处用户名</label>
-            <input type="text" class="form-control" id="j_username">
+            <input type="text" class="form-control" name="j_username" id="j_username">
         </div>
         <div class="form-group">
             <label for="j_password">教务处密码</label>
-            <input type="password" class="form-control" id="j_password" autocomplete="off">
+            <input type="password" class="form-control" id="j_password" name="j_password" autocomplete="off">
         </div>
         <div class="form-group">
             <label for="captcha">验证码</label>
-            <input type="number" class="form-control" id="captcha">
-            <img id="image" src="/console/captcha" onclick="captcha()">
+            <div class="form-inline">
+
+                    <input type="number" class="form-control" id="captcha" name="captcha">
+                    <img id="image" onclick="captcha()">
+
+            </div>
         </div>
         <button id="loginBtn" onclick="login()" type="button" class="btn btn-default">登录</button>
     </div>
@@ -74,7 +79,12 @@
 <script src="../static/js/jquery-3.6.0.min.js"></script>
 <script src="../static/js/bootstrap.min.js"></script>
 <script src="../static/js/md5.js"></script>
+<script src="../static/js/validator.min.js"></script>
 <script>
+    $(function (){
+        captcha();
+    });
+
     function login() {
         alert(hex_md5($("#j_password").val(), "null"));
     }
@@ -84,7 +94,7 @@
             url: '/console/captcha',
             type: 'GET',
             success: function (data) {
-                $('#image').attr('src', data);
+                $('#image').attr('src', data.message);
             }
         })
     }

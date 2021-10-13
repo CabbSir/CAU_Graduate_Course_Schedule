@@ -1,3 +1,5 @@
+import base64
+
 import requests
 from flask import Blueprint, session, request
 
@@ -31,7 +33,7 @@ def check_name():
     }
 
 
-# 注册
+# 注册 @Deprecated
 @interface_bp.route('/console/register', methods = ['POST'])
 def register():
     username = request.form.get('username')
@@ -50,6 +52,7 @@ def register():
     return JsonReturn.success()
 
 
+# 获取cookie
 def get_cookie():
     url = "http://gradinfo.cau.edu.cn/"
     headers = {
@@ -65,7 +68,7 @@ def get_cookie():
     return ret.headers.get('Set-Cookie').split(';')[0]
 
 
-# 教务登录
+# 获取验证码
 @interface_bp.route('/console/captcha', methods = ['GET'])
 def captcha():
     # 获取cookie存入session
@@ -82,8 +85,9 @@ def captcha():
         'Referer': 'http://gradinfo.cau.edu.cn/index.do',
         'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36'
     }
-    return requests.get(url, headers = headers).content
-
+    ret = requests.get(url, headers = headers)
+    base64_data = base64.b64encode(ret.content)
+    return JsonReturn.success("data:image/png;base64," + str(base64_data, encoding = "utf-8"))
 
 
 # 教务登录
