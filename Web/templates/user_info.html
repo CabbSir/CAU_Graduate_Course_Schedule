@@ -94,6 +94,7 @@
 <script src="../static/js/md5.js"></script>
 <script src="../static/js/validator.min.js"></script>
 <script>
+    let interval_id;
     $(function () {
         isLogin();
         captcha();
@@ -143,13 +144,17 @@
                 type: 'POST',
                 data: $('#loginForm').serialize(),
                 dataType: 'json',
+                beforeSend: function () {
+                    $('#myModal').modal({
+                        'keyboard': false,
+                        'backdrop': 'static'
+                    });
+                },
                 success: function (data) {
                     if (data.code === 0) {
                         // 登录成功，先显示一个等待框
-                        $('#myModal').modal({
-                            'keyboard': false,
-                            'backdrop': 'static'
-                        });
+                        $("#myModal").modal('hide');
+                        window.location.href = '/schedule?id=' + data.message;
                     } else {
                         alert("登入失败，请检查输入项，注意如果密码错误5次会被禁止登陆一天")
                     }
@@ -174,6 +179,7 @@
             type: 'GET',
             success: function (data) {
                 if (data.code === 0) {
+                    window.clearInterval(interval_id)
                     // 已经登录了
                     window.location.href = '/schedule?id=' + data.message;
                 }

@@ -6,6 +6,7 @@ from flask import Blueprint, session, request, render_template
 from ..models.user import User, db as user_db
 from ..models.course import Course, db as course_db
 from ..models.detail import Detail, db as detail_db
+from ..models.user_course_relation import UserCourseRelation, db as ucr_db
 from ..utils import ErrorMap, JsonReturn, functions
 import time
 from bs4 import BeautifulSoup
@@ -27,9 +28,12 @@ def logout():
     return render_template('user_info.html')
 
 
-@interface_bp.route('/console/cookie')
-def cookie():
-    return JsonReturn.success(session.get('cookie'))
+@interface_bp.route('/console/build_status')
+def build_status():
+    user_id = session.get('login_user_id')
+    user = User.query.filter_by(id = user_id)
+    return JsonReturn.success(user.build_status)
+
 
 # 检查用户名是否被使用了 @Deprecated
 @interface_bp.route('/console/check_name')
@@ -115,7 +119,7 @@ def login():
 
     # 从session中获取cookie
     cookie = session.get("cookie")
-    url = "http://gradinfo.cau.edu.cn/j_acegi_security_check;jsessionid="+cookie
+    url = "http://gradinfo.cau.edu.cn/j_acegi_security_check;jsessionid=" + cookie
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate',
@@ -157,12 +161,16 @@ def login():
         # 提交后获取自增id
         user_id = user.id
     else:
-        user_id = User.query.filter_by(j_name = name).first().id
+        user = User.query.filter_by(j_name = name).first()
+        user_id = user.id
     # 然后保存session一个月
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
-    build_schedule(login_cookie)
+    if build_schedule(login_cookie):
+        # 更新user表
+        user.build_status = 1
+        user_db.session.commit()
     return JsonReturn.success()
 
 
@@ -195,14 +203,17 @@ def build_schedule(cookie):
         point = tds[3].get_text(strip = True)
         week_start = tds[5].string.split('--')[0]
         week_end = tds[5].string.split('--')[1]
-        create_time = time.time()
-        modify_time = time.time()
+        create_time = int(time.time())
+        modify_time = int(time.time())
         course = Course(no = no, name = name, class_no = class_no, point = point, week_start = week_start,
                         week_end = week_end, create_time = create_time, modify_time = modify_time)
         # 入库
         course_db.session.add(course)
         course_db.session.commit()
         course_id = course.id
+        ucr = UserCourseRelation(user_id = session.get("login_user_id"), course_id = course_id)
+        ucr_db.session.add(ucr)
+        ucr_db.session.commit()
         # 需要更进一步操作的列表
         if tds[6].get_text(strip = True) == '':
             empty_list.append({
@@ -232,7 +243,7 @@ def build_schedule(cookie):
         num = num + 1
         # 调用advance
     if build_advanced_schedule(empty_list, cookie):
-        return JsonReturn.success()
+        return True
 
 
 def build_advanced_schedule(class_list, cookie):
@@ -275,14 +286,20 @@ def build_advanced_schedule(class_list, cookie):
             if no == course_info['no'] and class_no == course_info['class_no']:
                 # 确定是这个，入库
                 classroom = tds[9].get_text(strip = True)
-                create_time = time.time()
-                modify_time = time.time()
+                create_time = int(time.time())
+                modify_time = int(time.time())
                 # 先生成列表
                 for time_list in tds[11].get_text(strip = True).split("。")[0].split("；"):
                     week = time_list.split('：')[0]
                     t_list = time_list.split('：')[1].split('，')
+                    last_weekday = ""
                     for t in t_list:
+                        if t[0] != "周" and t[0].isdigit():
+                            weekday = last_weekday
+                            class_start = t[2]
+                            class_end = t[4]
                         weekday = t[0: 2]
+                        last_weekday = weekday
                         class_start = t[2]
                         class_end = t[4]
                         detail = Detail(course_id = course_info['course_id'], weekday = weekday,
@@ -293,5 +310,5 @@ def build_advanced_schedule(class_list, cookie):
                     detail_db.session.commit()
                 except Exception as e:
                     detail_db.session.rollback()
-                    print(e) # @TODO 异常处理
+                    print(e)  # @TODO 异常处理
     return True
