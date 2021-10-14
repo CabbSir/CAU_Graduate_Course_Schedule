@@ -198,7 +198,11 @@ def build_schedule(cookie):
         course_id = course.id
         # 需要更进一步操作的列表
         if tds[6].get_text(strip = True) == '':
-            empty_list.append(num)
+            empty_list.append({
+                'course_id': course_id,
+                'class_no': class_no,
+                'no': no
+            })
         else:
             for location in tds[6].get_text(strip = True).split('|hh|'):
                 if location == '':
@@ -223,3 +227,4 @@ def build_schedule(cookie):
 
 
 def build_advanced_schedule(class_list, cookie):
+    pass

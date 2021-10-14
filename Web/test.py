@@ -1,23 +1,41 @@
+import time
+
 import requests
 from bs4 import BeautifulSoup
 
 if __name__ == '__main__':
-    url = 'http://gradinfo.cau.edu.cn/studentschedule/showStudentSchedule.do?groupId=&moduleId=20101'
+    url = 'http://gradinfo.cau.edu.cn/stuelectcourse/listCourse.do'
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate',
         'Accept-Language': 'zh,zh-CN;q=0.9',
-        'Cookie': 'JSESSIONID=07DB6B25516F0D3EA565429FFC88DD31.TA2',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'Content-Length': '157',
+        'Cookie': 'JSESSIONID=388DACB3417A6A38429EFD05B83E1CC7.TA1',
         'Host': 'gradinfo.cau.edu.cn',
-        'Referer': 'http://gradinfo.cau.edu.cn/index.do',
+        'Origin': 'http://gradinfo.cau.edu.cn',
+        'Referer': 'http://gradinfo.cau.edu.cn/stuelectcourse/preQueryCourse.do?groupId=&moduleId=24104',
         'Upgrade-Insecure-Requests': '1',
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36'
     }
-    ret = requests.get(url, headers = headers)
+    data = {
+        'paging_action': 'paging',
+        'depid': '1',
+        'coursecode': '土壤利用与保护技术',
+        'teacher': '',
+        'courseSort': '',
+        'week': '',
+        'section': ''
+    }
+    ret = requests.post(url, data, headers = headers)
+    print(ret.text)
     soup = BeautifulSoup(ret.text, "html.parser")
     table = soup.body.table
     trs = table.find_all('tr')
+    del trs[0]
+    # 判断学号确认身份 除了SY应该都是本部学生 然后根据班次判断是否是烟台的
     for tr in trs:
-        for td in tr.find_all('td'):
-            print(td.get_text(strip=True), end='')
-            print(" ")
+        tds = tr.find_all('td')
+        no = tds[0].get_text(strip = True)
+        class_no = tds[2].get_text(strip = True)
