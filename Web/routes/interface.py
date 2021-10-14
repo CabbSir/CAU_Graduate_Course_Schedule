@@ -3,9 +3,12 @@ import base64
 import requests
 from flask import Blueprint, session, request, render_template
 
-from ..models.user import User, db
+from ..models.user import User, db as user_db
+from ..models.course import Course, db as course_db
+from ..models.detail import Detail, db as detail_db
 from ..utils import ErrorMap, JsonReturn, functions
 import time
+from bs4 import BeautifulSoup
 
 interface_bp = Blueprint('interface_bp', __name__)
 
@@ -51,9 +54,9 @@ def register():
     create_time = int(time.time())
     modify_time = int(time.time())
     user = User(username = username, last_login_ip = ip, last_login_time = login_time, create_time = create_time,
-                modify_time = modify_time)
-    db.session.add(user)
-    db.session.commit()
+                modify_time = modify_time, build_schedule = 2)
+    user_db.session.add(user)
+    user_db.session.commit()
     return JsonReturn.success()
 
 
@@ -143,8 +146,8 @@ def login():
         # 这里存储的是经过md5处理的密码
         user = User(j_name = name, j_passwd = passwd, last_login_ip = ip, last_login_time = login_time,
                     create_time = create_time, modify_time = modify_time)
-        db.session.add(user)
-        db.session.commit()
+        user_db.session.add(user)
+        user_db.session.commit()
         # 提交后获取自增id
         user_id = user.id
     else:
@@ -154,3 +157,69 @@ def login():
     session['login_user_id'] = user_id
     session['login_user_name'] = name
     return JsonReturn.success()
+
+
+def build_schedule(cookie):
+    url = 'http://gradinfo.cau.edu.cn/studentschedule/showStudentSchedule.do?groupId=&moduleId=20101'
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'zh,zh-CN;q=0.9',
+        'Cookie': cookie,
+        'Host': 'gradinfo.cau.edu.cn',
+        'Referer': 'http://gradinfo.cau.edu.cn/index.do',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36'
+    }
+    ret = requests.get(url, headers = headers)
+    ret = ret.text.replace("<br>", '|hh|')
+    soup = BeautifulSoup(ret, "html.parser")
+    table = soup.body.table
+    trs = table.find_all('tr')
+    del trs[0]  # 删除th行
+    total_class_num = len(trs)  # 总课程数
+    num = 0
+    empty_list = []
+    for tr in trs:
+        tds = tr.find_all('td')
+        no = tds[0]
+        name = tds[1]
+        class_no = tds[2]
+        point = tds[3]
+        week_start = tds[5].string.split('--')[0]
+        week_end = tds[5].string.split('--')[1]
+        create_time = time.time()
+        modify_time = time.time()
+        course = Course(no = no, name = name, class_no = class_no, point = point, week_start = week_start,
+                        week_end = week_end, create_time = create_time, modify_time = modify_time)
+        # 入库
+        course_db.session.add(course)
+        course_db.session.commit()
+        course_id = course.id
+        # 需要更进一步操作的列表
+        if tds[6].get_text(strip = True) == '':
+            empty_list.append(num)
+        else:
+            for location in tds[6].get_text(strip = True).split('|hh|'):
+                if location == '':
+                    continue
+                data = location.split('-')
+                weekday = data[0]
+                class_start = data[1][1]
+                class_end = data[2][0]
+                classroom = data[3]
+                detail = Detail(course_id = course_id, weekday = weekday, class_start = class_start,
+                                class_end = class_end, classroom = classroom, create_time = create_time,
+                                modify_time = modify_time)
+                detail_db.session.add(detail)
+            try:
+                detail_db.session.commit()
+            except Exception as e:
+                detail_db.session.rollback()
+                print(e)  # @TODO 异常处理
+        num = num + 1
+        # 调用advance
+        build_advanced_schedule(empty_list, cookie)
+
+
+def build_advanced_schedule(class_list, cookie):
