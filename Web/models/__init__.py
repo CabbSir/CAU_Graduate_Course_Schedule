@@ -6,7 +6,7 @@ db = SQLAlchemy()
 
 
 def init_db():
-    from . import course, user, detail, course_detail_relation, user_course_relation
+    from . import course, user, detail, user_course_relation
     """Clear existing data and create new tables."""
     db.drop_all()
     db.create_all()
