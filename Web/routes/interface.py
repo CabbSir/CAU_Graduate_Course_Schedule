@@ -27,6 +27,10 @@ def logout():
     return render_template('user_info.html')
 
 
+@interface_bp.route('/console/cookie')
+def cookie():
+    return JsonReturn.success(session.get('cookie'))
+
 # 检查用户名是否被使用了 @Deprecated
 @interface_bp.route('/console/check_name')
 def check_name():
@@ -111,7 +115,7 @@ def login():
 
     # 从session中获取cookie
     cookie = session.get("cookie")
-    url = "http://gradinfo.cau.edu.cn/j_acegi_security_check"
+    url = "http://gradinfo.cau.edu.cn/j_acegi_security_check;jsessionid="+cookie
     headers = {
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
         'Accept-Encoding': 'gzip, deflate',
@@ -134,6 +138,8 @@ def login():
         'groupId': ''
     }
     ret = requests.post(url, data, headers = headers)
+    login_cookie = ret.history[0].headers['Set-Cookie'].split(';')[0]
+    session['login_cookie'] = login_cookie
     html = ret.text
     if html.find("研究生综合管理系统第二版") == -1:
         return JsonReturn.error(ErrorMap.LOGIN_ERROR)
@@ -156,6 +162,7 @@ def login():
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
+    build_schedule(login_cookie)
     return JsonReturn.success()
 
 
@@ -182,10 +189,10 @@ def build_schedule(cookie):
     empty_list = []
     for tr in trs:
         tds = tr.find_all('td')
-        no = tds[0]
-        name = tds[1]
-        class_no = tds[2]
-        point = tds[3]
+        no = tds[0].get_text(strip = True)
+        name = tds[1].get_text(strip = True)
+        class_no = tds[2].get_text(strip = True)
+        point = tds[3].get_text(strip = True)
         week_start = tds[5].string.split('--')[0]
         week_end = tds[5].string.split('--')[1]
         create_time = time.time()
@@ -200,6 +207,7 @@ def build_schedule(cookie):
         if tds[6].get_text(strip = True) == '':
             empty_list.append({
                 'course_id': course_id,
+                'course_name': name,
                 'class_no': class_no,
                 'no': no
             })
@@ -223,8 +231,67 @@ def build_schedule(cookie):
                 print(e)  # @TODO 异常处理
         num = num + 1
         # 调用advance
-        build_advanced_schedule(empty_list, cookie)
+    if build_advanced_schedule(empty_list, cookie):
+        return JsonReturn.success()
 
 
 def build_advanced_schedule(class_list, cookie):
-    pass
+    url = 'http://gradinfo.cau.edu.cn/stuelectcourse/listCourse.do'
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'zh,zh-CN;q=0.9',
+        'Cache-Control': 'max-age=0',
+        'Connection': 'keep-alive',
+        'Content-Length': '157',
+        'Cookie': cookie,
+        'Host': 'gradinfo.cau.edu.cn',
+        'Origin': 'http://gradinfo.cau.edu.cn',
+        'Referer': 'http://gradinfo.cau.edu.cn/stuelectcourse/preQueryCourse.do?groupId=&moduleId=24104',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36'
+    }
+
+    for course_info in class_list:
+        data = {
+            'paging_action': 'paging',
+            'depid': '1',
+            'coursecode': course_info['course_name'],
+            'teacher': '',
+            'courseSort': '',
+            'week': '',
+            'section': ''
+        }
+        ret = requests.post(url, data, headers = headers)
+        soup = BeautifulSoup(ret.text, "html.parser")
+        table = soup.body.table
+        trs = table.find_all('tr')
+        del trs[0]
+        # 确认课程条目
+        for tr in trs:
+            tds = tr.find_all('td')
+            no = tds[0].get_text(strip = True)
+            class_no = tds[2].get_text(strip = True)
+            if no == course_info['no'] and class_no == course_info['class_no']:
+                # 确定是这个，入库
+                classroom = tds[9].get_text(strip = True)
+                create_time = time.time()
+                modify_time = time.time()
+                # 先生成列表
+                for time_list in tds[11].get_text(strip = True).split("。")[0].split("；"):
+                    week = time_list.split('：')[0]
+                    t_list = time_list.split('：')[1].split('，')
+                    for t in t_list:
+                        weekday = t[0: 2]
+                        class_start = t[2]
+                        class_end = t[4]
+                        detail = Detail(course_id = course_info['course_id'], weekday = weekday,
+                                        class_start = class_start, class_end = class_end, classroom = classroom,
+                                        create_time = create_time, modify_time = modify_time)
+                        detail_db.session.add(detail)
+                try:
+                    detail_db.session.commit()
+                except Exception as e:
+                    detail_db.session.rollback()
+                    print(e) # @TODO 异常处理
+    return True
