@@ -168,6 +168,7 @@ def login():
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
+    # @TODO 引入redis后直接加入消息队列处理数据
     result = build_schedule(login_cookie)
     if not result:
         # 插入失败
