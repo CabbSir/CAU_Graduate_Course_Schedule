@@ -1,4 +1,5 @@
 import base64
+import re
 
 import requests
 from flask import Blueprint, session, request, render_template
@@ -208,8 +209,15 @@ def build_schedule(cookie):
         week_end = tds[5].string.split('--')[1]
         create_time = int(time.time())
         modify_time = int(time.time())
+        if tds[6].get_text(strip = True) == '':
+            is_specail = 1
+            build_status = 2
+        else:
+            is_specail = 2
+            build_status = 1
         course = Course(no = no, name = name, class_no = class_no, point = point, week_start = week_start,
-                        week_end = week_end, create_time = create_time, modify_time = modify_time)
+                        week_end = week_end, is_special = is_specail, build_status = build_status,
+                        create_time = create_time, modify_time = modify_time)
         # 首先查询数据库看看是否已经有这个课程
         db_course = Course.query.filter_by(no = no, class_no = class_no).first()
         if not db_course:
@@ -248,6 +256,7 @@ def build_schedule(cookie):
             except Exception as e:
                 detail_db.session.rollback()
                 return False
+    build_advanced_schedule(empty_list, cookie)
     return True
 
 
@@ -293,24 +302,41 @@ def build_advanced_schedule(class_list, cookie):
                 classroom = tds[9].get_text(strip = True)
                 create_time = int(time.time())
                 modify_time = int(time.time())
+                # 将这个原文添加到备注中
+                course = Course.query.filter_by(id=course_info['course_id']).first()
+                course.remark = tds[11].get_text(strip = True)
+                course_db.session.commit()
                 # 先生成列表
-                for time_list in tds[11].get_text(strip = True).split("。")[0].split("；"):
-                    week = time_list.split('：')[0]
-                    t_list = time_list.split('：')[1].split('，')
-                    last_weekday = ""
-                    for t in t_list:
-                        if t[0] != "周" and t[0].isdigit():
-                            weekday = last_weekday
-                            class_start = t[2]
-                            class_end = t[4]
-                        weekday = t[0: 2]
-                        last_weekday = weekday
-                        class_start = t[2]
-                        class_end = t[4]
-                        detail = Detail(course_id = course_info['course_id'], weekday = weekday,
-                                        class_start = class_start, class_end = class_end, classroom = classroom,
-                                        create_time = create_time, modify_time = modify_time)
-                        detail_db.session.add(detail)
+                for week in tds[11].get_text(strip = True).split("。")[0].split("；"):
+                    # 用冒号分割天数
+                    week_str = week.split('：')[0]
+                    week_str = week_str.replace('第', '').replace('周', '')
+                    if week_str.find('-') != -1:
+                        begin = week_str.split('-')[0]
+                        end = week_str.split('-')[1]
+                        week_list = []
+                        for i in range(int(begin), int(end) + 1):
+                            week_list.append(i)
+                    else:
+                        week_list = [week_str]
+                    days = week.split('：')[1]
+                    # 分割days,
+                    for w in week_list:
+                        week_str = str(w)
+                        last_week_day = ''
+                        for day in days.split('，'):
+                            if day[0] == '周':
+                                weekday = day[0: 2]
+                                last_week_day = weekday
+                            else:
+                                weekday = last_week_day
+                            hour_begin = re.findall('\d+', day.split('-')[0])[0]
+                            hour_end = re.findall('\d+', day.split('-')[1])[0]
+
+                            detail = Detail(course_id = course_info['course_id'], week = week_str, weekday = weekday,
+                                            class_start = hour_begin, class_end = hour_end, classroom = classroom,
+                                            create_time = create_time, modify_time = modify_time)
+                            detail_db.session.add(detail)
                 try:
                     detail_db.session.commit()
                 except Exception as e:

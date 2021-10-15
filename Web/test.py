@@ -1,6 +1,7 @@
+import re
 
 
-if __name__ == '__main__':
+def str_function():
     str_list = [
         '第8周：周一1-4节，周二5-8节，周五1-4节，周六1-4节上课；第9周：周一9-12节，周二5-8节，周五5-8节，周六9-12节上课。',
         '第13周：周四1-4节，周五1-3节上课；第14周：周一1-4节，周二1-4节，周四1-4节，周五1-3节上课；第15周：周一1-4节，周二1-4节，周三1-4节，周四1-4节上课。',
@@ -10,5 +11,39 @@ if __name__ == '__main__':
     ]
 
     for s in str_list:
-        # 处理字符串的方法，
-        pass
+        resource_str = s.split('。')[0]  # 首先用句号分割正文
+        # 然后用；分割周次
+        weeks = resource_str.split('；')
+        for week in weeks:
+            # 用冒号分割天数
+            week_str = week.split('：')[0]
+            week_str = week_str.replace('第', '').replace('周', '')
+            if week_str.find('-') != -1:
+                begin = week_str.split('-')[0]
+                end = week_str.split('-')[1]
+                week_list = []
+                for i in range(int(begin), int(end) + 1):
+                    week_list.append(i)
+            else:
+                week_list = [week_str]
+            days = week.split('：')[1]
+            # 分割days,
+            for w in week_list:
+                week_str = str(w)
+                last_week_day = ''
+                for day in days.split('，'):
+                    if day[0] == '周':
+                        weekday = day[0: 2]
+                        last_week_day = weekday
+                    else:
+                        weekday = last_week_day
+                    hour_begin = re.findall('\d+', day.split('-')[0])[0]
+                    hour_end = re.findall('\d+', day.split('-')[1])[0]
+                    print(week_str + " " + weekday + " " + hour_begin + " " + hour_end)
+        print('——————————————————————————————')
+
+
+# 处理字符串的方法，
+
+if __name__ == '__main__':
+    str_function()
