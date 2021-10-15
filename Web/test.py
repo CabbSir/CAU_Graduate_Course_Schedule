@@ -1,56 +1,14 @@
-import time
 
-import requests
-from bs4 import BeautifulSoup
 
 if __name__ == '__main__':
-    url = 'http://gradinfo.cau.edu.cn/stuelectcourse/listCourse.do'
-    headers = {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-        'Accept-Encoding': 'gzip, deflate',
-        'Accept-Language': 'zh,zh-CN;q=0.9',
-        'Cache-Control': 'max-age=0',
-        'Connection': 'keep-alive',
-        'Content-Length': '157',
-        'Cookie': "JSESSIONID=527EAE926B5C325F2B3CDE668FC01A9C.TA1",
-        'Host': 'gradinfo.cau.edu.cn',
-        'Origin': 'http://gradinfo.cau.edu.cn',
-        'Referer': 'http://gradinfo.cau.edu.cn/stuelectcourse/preQueryCourse.do?groupId=&moduleId=24104',
-        'Upgrade-Insecure-Requests': '1',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.71 Safari/537.36'
-    }
+    str_list = [
+        '第8周：周一1-4节，周二5-8节，周五1-4节，周六1-4节上课；第9周：周一9-12节，周二5-8节，周五5-8节，周六9-12节上课。',
+        '第13周：周四1-4节，周五1-3节上课；第14周：周一1-4节，周二1-4节，周四1-4节，周五1-3节上课；第15周：周一1-4节，周二1-4节，周三1-4节，周四1-4节上课。',
+        '第7周：周一5-8节，周二1-4节，周三5-8节上课；第8周：周一5-8节，周三5-8节上课；第10周：周一1-4节，周二5-8节，周三1-4节，周四1-4节上课。',
+        '11-12周：周六1-4，周日1-4；13-14周：周三1-4，周六1-4；15周：周六1-4，周日1-4。资源与环境专业（土院，资环学院），土木水利专业，能源动力专业，电子信息专业的同学必选.',
+        '第5周：周五9-11节，周六5-8节，周日5-8节，9-11节上课；第6周：周一1-4节，周二9-12节上课。'
+    ]
 
-    data = {
-        'paging_action': 'paging',
-        'depid': '1',
-        'coursecode': "科技摄影与美学实践",
-        'teacher': '',
-        'courseSort': '',
-        'week': '',
-        'section': ''
-    }
-    ret = requests.post(url, data, headers = headers)
-    soup = BeautifulSoup(ret.text, "html.parser")
-    table = soup.body.table
-    trs = table.find_all('tr')
-    del trs[0]
-    del trs[0]
-    del trs[0]
-    # 确认课程条目
-    for tr in trs:
-        tds = tr.find_all('td')
-        no = tds[0].get_text(strip = True)
-        class_no = tds[2].get_text(strip = True)
-        # 确定是这个，入库
-        classroom = tds[9].get_text(strip = True)
-        create_time = int(time.time())
-        modify_time = int(time.time())
-        # 先生成列表
-        for time_list in tds[11].get_text(strip = True).split("。")[0].split("；"):
-            week = time_list.split('：')[0]
-            t_list = time_list.split('：')[1].split('，')
-            for t in t_list:
-                weekday = t[0: 2]
-                class_start = t[2]
-                class_end = t[4]
-                print(weekday + ' ' + class_start + ' ' + class_end)
+    for s in str_list:
+        # 处理字符串的方法，
+        pass

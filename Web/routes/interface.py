@@ -167,7 +167,12 @@ def login():
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
-    if build_schedule(login_cookie):
+    result = build_schedule(login_cookie)
+    if not result:
+        # 插入失败
+        session.clear()
+        return JsonReturn.error(ErrorMap.DATA_INSERT_ERROR)
+    else:
         # 更新user表
         user.build_status = 1
         user_db.session.commit()
@@ -192,8 +197,6 @@ def build_schedule(cookie):
     table = soup.body.table
     trs = table.find_all('tr')
     del trs[0]  # 删除th行
-    total_class_num = len(trs)  # 总课程数
-    num = 0
     empty_list = []
     for tr in trs:
         tds = tr.find_all('td')
@@ -207,10 +210,15 @@ def build_schedule(cookie):
         modify_time = int(time.time())
         course = Course(no = no, name = name, class_no = class_no, point = point, week_start = week_start,
                         week_end = week_end, create_time = create_time, modify_time = modify_time)
-        # 入库
-        course_db.session.add(course)
-        course_db.session.commit()
-        course_id = course.id
+        # 首先查询数据库看看是否已经有这个课程
+        db_course = Course.query.filter_by(no = no, class_no = class_no).first()
+        if not db_course:
+            # 入库
+            course_db.session.add(course)
+            course_db.session.commit()
+            course_id = course.id
+        else:
+            course_id = db_course.id
         ucr = UserCourseRelation(user_id = session.get("login_user_id"), course_id = course_id)
         ucr_db.session.add(ucr)
         ucr_db.session.commit()
@@ -239,11 +247,8 @@ def build_schedule(cookie):
                 detail_db.session.commit()
             except Exception as e:
                 detail_db.session.rollback()
-                print(e)  # @TODO 异常处理
-        num = num + 1
-        # 调用advance
-    if build_advanced_schedule(empty_list, cookie):
-        return True
+                return False
+    return True
 
 
 def build_advanced_schedule(class_list, cookie):
@@ -310,5 +315,5 @@ def build_advanced_schedule(class_list, cookie):
                     detail_db.session.commit()
                 except Exception as e:
                     detail_db.session.rollback()
-                    print(e)  # @TODO 异常处理
+                    return False
     return True

@@ -155,6 +155,10 @@
                         // 登录成功，先显示一个等待框
                         $("#myModal").modal('hide');
                         window.location.href = '/schedule?id=' + data.message;
+                    } else if (data.code === 10006) {
+                        $("#myModal").modal('hide');
+                        alert("登陆成功，但是课表获取失败，请重新登录尝试")
+                        window.location.refresh();
                     } else {
                         alert("登入失败，请检查输入项，注意如果密码错误5次会被禁止登陆一天")
                     }
