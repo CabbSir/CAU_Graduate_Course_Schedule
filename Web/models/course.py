@@ -7,6 +7,7 @@ class Course(db.Model):
     __tablename__ = 'tb_course'
     id = db.Column(db.Integer, primary_key = True, nullable = False)
     no = db.Column(db.String(20), nullable = False)
+    season_id = db.Column(db.Integer, nullable = False) # 新增season字段
     name = db.Column(db.String(50), nullable = False)
     class_no = db.Column(db.Integer, nullable = False)
     point = db.Column(db.Numeric(10, 1), nullable = False)
