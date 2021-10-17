@@ -374,6 +374,9 @@ def update_calendar(login_cookie):
     title = soup.find('div', 'title').get_text(strip = True)
     now_year = title[0:4]
     now_season = 1 if title[4] == '春' else 2
+    season = Season.query.filter_by(season = now_season, year = now_year, is_now = 1).first()
+    if season:
+        return True
     table = soup.body.table
     trs = table.find_all('tr')
     del (trs[0])
