@@ -1,4 +1,5 @@
 import base64
+from datetime import datetime, timedelta
 import re
 
 import requests
@@ -7,6 +8,8 @@ from flask import Blueprint, session, request, render_template
 from ..models.user import User, db as user_db
 from ..models.course import Course, db as course_db
 from ..models.detail import Detail, db as detail_db
+from ..models.season import Season, db as season_db
+from ..models.calendar import Calendar, db as calendar_db
 from ..models.user_course_relation import UserCourseRelation, db as ucr_db
 from ..utils import ErrorMap, JsonReturn, functions
 import time
@@ -170,17 +173,19 @@ def login():
     session['login_user_name'] = name
     # @TODO 引入redis后直接加入消息队列处理数据
     result = build_schedule(login_cookie)
+    result2 = update_calendar(login_cookie)
     if not result:
         # 插入失败
         session.clear()
         return JsonReturn.error(ErrorMap.DATA_INSERT_ERROR)
-    else:
-        # 更新user表
-        user.build_status = 1
-        user_db.session.commit()
+    if not result2:
+        # 插入失败
+        session.clear()
+        return JsonReturn.error(ErrorMap.DATA_INSERT_ERROR)
     return JsonReturn.success()
 
 
+# 获取有规律的课程
 def build_schedule(cookie):
     url = 'http://gradinfo.cau.edu.cn/studentschedule/showStudentSchedule.do?groupId=&moduleId=20101'
     headers = {
@@ -203,6 +208,7 @@ def build_schedule(cookie):
     for tr in trs:
         tds = tr.find_all('td')
         no = tds[0].get_text(strip = True)
+        season_id = 1  # @TODO
         name = tds[1].get_text(strip = True)
         class_no = tds[2].get_text(strip = True)
         point = tds[3].get_text(strip = True)
@@ -216,9 +222,9 @@ def build_schedule(cookie):
         else:
             is_specail = 2
             build_status = 1
-        course = Course(no = no, name = name, class_no = class_no, point = point, week_start = week_start,
-                        week_end = week_end, is_special = is_specail, build_status = build_status,
-                        create_time = create_time, modify_time = modify_time)
+        course = Course(no = no, season_id = season_id, name = name, class_no = class_no, point = point,
+                        week_start = week_start, week_end = week_end, is_special = is_specail,
+                        build_status = build_status, create_time = create_time, modify_time = modify_time)
         # 首先查询数据库看看是否已经有这个课程
         db_course = Course.query.filter_by(no = no, class_no = class_no).first()
         if not db_course:
@@ -257,10 +263,12 @@ def build_schedule(cookie):
             except Exception as e:
                 detail_db.session.rollback()
                 return False
-    build_advanced_schedule(empty_list, cookie)
+    if not build_advanced_schedule(empty_list, cookie):
+        return False
     return True
 
 
+# 获取需要额外翻译的课程
 def build_advanced_schedule(class_list, cookie):
     url = 'http://gradinfo.cau.edu.cn/stuelectcourse/listCourse.do'
     headers = {
@@ -304,7 +312,7 @@ def build_advanced_schedule(class_list, cookie):
                 create_time = int(time.time())
                 modify_time = int(time.time())
                 # 将这个原文添加到备注中
-                course = Course.query.filter_by(id=course_info['course_id']).first()
+                course = Course.query.filter_by(id = course_info['course_id']).first()
                 course.remark = tds[11].get_text(strip = True)
                 course_db.session.commit()
                 # 先生成列表
@@ -334,7 +342,8 @@ def build_advanced_schedule(class_list, cookie):
                             hour_begin = re.findall('\d+', day.split('-')[0])[0]
                             hour_end = re.findall('\d+', day.split('-')[1])[0]
 
-                            detail = Detail(course_id = course_info['course_id'], week = week_str, weekday = weekday,
+                            detail = Detail(course_id = course_info['course_id'],
+                                            week = week_str.replace("\r", "").replace('\n', ''), weekday = weekday,
                                             class_start = hour_begin, class_end = hour_end, classroom = classroom,
                                             create_time = create_time, modify_time = modify_time)
                             detail_db.session.add(detail)
@@ -343,4 +352,65 @@ def build_advanced_schedule(class_list, cookie):
                 except Exception as e:
                     detail_db.session.rollback()
                     return False
+    return True
+
+
+# 更新校历和学期
+def update_calendar(login_cookie):
+    url = 'http://gradinfo.cau.edu.cn/calendar/index.do?groupId=&moduleId=28001'
+    headers = {
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+        'Accept-Encoding': 'gzip, deflate',
+        'Accept-Language': 'zh,zh-CN;q=0.9',
+        'Connection': 'keep-alive',
+        'Cookie': login_cookie,
+        'Host': 'gradinfo.cau.edu.cn',
+        'Referer': 'http://gradinfo.cau.edu.cn/listLeft.do?',
+        'Upgrade-Insecure-Requests': '1',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36'
+    }
+    ret = requests.get(url, headers = headers)
+    soup = BeautifulSoup(ret.text, "html.parser")
+    title = soup.find('div', 'title').get_text(strip = True)
+    now_year = title[0:4]
+    now_season = 1 if title[4] == '春' else 2
+    table = soup.body.table
+    trs = table.find_all('tr')
+    del (trs[0])
+    for tr in trs:
+        tds = tr.find_all('td')
+        year = tds[0].get_text(strip = True)
+        season = 1 if tds[1].get_text(strip = True) == '春' else 2
+        begin_date = tds[2].get_text(strip = True)
+        total_weeks = tds[3].get_text(strip = True)
+        is_now = 1 if now_year == year and now_season == season else 2
+        now = int(time.time())
+        season = Season(year = year, season = season, begin_date = begin_date, total_weeks = total_weeks,
+                        is_now = is_now, create_time = now, modify_time = now)
+        season_db.session.add(season)
+    try:
+        season_db.session.commit()
+    except Exception as e:
+        season_db.session.rollback()
+        return False
+    # 生成校历
+    season = Season.query.filter_by(season = now_season, year = now_year).first()
+    begin_date = season.begin_date
+    for week_no in range(1, season.total_weeks + 1):
+        season_id = season.id
+        mon = (begin_date + timedelta(days = (week_no - 1) * 7)).strftime("%Y-%m-%d")
+        tues = (begin_date + timedelta(days = (week_no - 1) * 7 + 1)).strftime("%Y-%m-%d")
+        wed = (begin_date + timedelta(days = (week_no - 1) * 7 + 2)).strftime("%Y-%m-%d")
+        thur = (begin_date + timedelta(days = (week_no - 1) * 7 + 3)).strftime("%Y-%m-%d")
+        fri = (begin_date + timedelta(days = (week_no - 1) * 7 + 4)).strftime("%Y-%m-%d")
+        sat = (begin_date + timedelta(days = (week_no - 1) * 7 + 5)).strftime("%Y-%m-%d")
+        sun = (begin_date + timedelta(days = (week_no - 1) * 7 + 6)).strftime("%Y-%m-%d")
+        calendar = Calendar(season_id = season_id, week_no = week_no, mon = mon, tues = tues, wed = wed, thur = thur,
+                            fri = fri, sat = sat, sun = sun)
+        calendar_db.session.add(calendar)
+    try:
+        calendar_db.session.commit()
+    except Exception as e:
+        calendar_db.session.rollback()
+        return False
     return True
