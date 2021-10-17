@@ -13,4 +13,3 @@ class User(db.Model):
     last_login_time = db.Column(db.String(10), nullable = False)
     create_time = db.Column(db.String(10), nullable = False, default = int(time()))
     modify_time = db.Column(db.String(10), nullable = False, default = int(time()))
-    build_status = db.Column(db.SmallInteger, nullable = False, default = 2)
