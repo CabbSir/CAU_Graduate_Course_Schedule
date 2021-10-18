@@ -1,9 +1,12 @@
 import base64
+import json
+import sys
 from datetime import datetime, timedelta
 import re
 
 import requests
 from flask import Blueprint, session, request, render_template
+from sqlalchemy import and_
 
 from ..models.user import User, db as user_db
 from ..models.course import Course, db as course_db
@@ -172,8 +175,8 @@ def login():
     session['login_user_id'] = user_id
     session['login_user_name'] = name
     # @TODO 引入redis后直接加入消息队列处理数据
-    result = build_schedule(login_cookie)
     result2 = update_calendar(login_cookie)
+    result = build_schedule(login_cookie)
     if not result:
         # 插入失败
         session.clear()
@@ -208,7 +211,7 @@ def build_schedule(cookie):
     for tr in trs:
         tds = tr.find_all('td')
         no = tds[0].get_text(strip = True)
-        season_id = 1  # @TODO
+        season_id = Season.query.filter_by(is_now = 1).first().id
         name = tds[1].get_text(strip = True)
         class_no = tds[2].get_text(strip = True)
         point = tds[3].get_text(strip = True)
@@ -349,6 +352,8 @@ def build_advanced_schedule(class_list, cookie):
                             detail_db.session.add(detail)
                 try:
                     detail_db.session.commit()
+                    course.build_status = 1
+                    course_db.session.commit()
                 except Exception as e:
                     detail_db.session.rollback()
                     return False
@@ -399,21 +404,76 @@ def update_calendar(login_cookie):
     # 生成校历
     season = Season.query.filter_by(season = now_season, year = now_year).first()
     begin_date = season.begin_date
+    season_id = season.id
     for week_no in range(1, season.total_weeks + 1):
-        season_id = season.id
-        mon = (begin_date + timedelta(days = (week_no - 1) * 7)).strftime("%Y-%m-%d")
-        tues = (begin_date + timedelta(days = (week_no - 1) * 7 + 1)).strftime("%Y-%m-%d")
-        wed = (begin_date + timedelta(days = (week_no - 1) * 7 + 2)).strftime("%Y-%m-%d")
-        thur = (begin_date + timedelta(days = (week_no - 1) * 7 + 3)).strftime("%Y-%m-%d")
-        fri = (begin_date + timedelta(days = (week_no - 1) * 7 + 4)).strftime("%Y-%m-%d")
-        sat = (begin_date + timedelta(days = (week_no - 1) * 7 + 5)).strftime("%Y-%m-%d")
-        sun = (begin_date + timedelta(days = (week_no - 1) * 7 + 6)).strftime("%Y-%m-%d")
-        calendar = Calendar(season_id = season_id, week_no = week_no, mon = mon, tues = tues, wed = wed, thur = thur,
-                            fri = fri, sat = sat, sun = sun)
-        calendar_db.session.add(calendar)
+        for week_day in range(1, 8):
+            date = (begin_date + timedelta(days = (week_no - 1) * 7 + week_day - 1)).strftime("%Y-%m-%d")
+            calendar = Calendar(season_id = season_id, week_no = week_no, week_day = week_day, date = date)
+            calendar_db.session.add(calendar)
     try:
         calendar_db.session.commit()
     except Exception as e:
         calendar_db.session.rollback()
         return False
     return True
+
+
+# 展示课表
+@interface_bp.route('/console/schedule')
+def schedule():
+    week_no = int(request.args.get('week_no'))
+    season_info = Season.query.filter_by(is_now = 1).first()
+    if not week_no:
+        week_now = Calendar.query.filter_by(date = datetime.today().strftime("%Y-%m-%d"),
+                                            season_id = season_info.id).first()
+        week_no = week_now.week_no
+    days = Calendar.query.filter_by(season_id = season_info.id, week_no = week_no).all()
+    thead = []
+    for day in days:
+        thead.append({
+            "week_day": day.week_day,
+            "date": day.date.strftime("%Y-%m-%d")
+        })
+    sql = "SELECT c.id, c.no, c.name, c.remark, c.is_special, d.class_start, d.class_end, d.classroom " \
+          "FROM tb_course c LEFT JOIN tb_detail d ON c.id = d.course_id WHERE c.week_end >= " + str(
+        week_no) + " AND c.week_start <= " + str(week_no) + " AND c.season_id = " + str(
+        season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0)"
+    courses = course_db.session.execute(sql)
+    tbody = []
+    for course in courses:
+        tbody.append({
+            'course_id': course[0],
+            'course_no': course[1],
+            'name': course[2],
+            'remark': course[3],
+            'is_special': course[4],
+            'class_start': course[5],
+            'class_end': course[6],
+            'classroom': course[7]
+        })
+    return JsonReturn.success({
+        'thead': thead,
+        'tbody': tbody
+    })
+
+
+'''
+周信息
+返回值：
+    当前周数
+    全部周列表
+'''
+
+
+@interface_bp.route('/console/week_info')
+def week_info():
+    season_info = Season.query.filter_by(is_now = 1).first()
+    week_now = Calendar.query.filter_by(date = datetime.today().strftime("%Y-%m-%d"),
+                                        season_id = season_info.id).first()
+    if not season_info or not week_now:
+        return JsonReturn.error(ErrorMap.UNKNOWN_ERROR)
+    return JsonReturn.success({
+        'total_weeks': season_info.total_weeks,
+        'week_now': week_now.week_no,
+        'week_day_now': week_now.week_day
+    })

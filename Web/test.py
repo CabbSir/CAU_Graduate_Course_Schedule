@@ -39,7 +39,7 @@ def get_season():
 
 
 def build_calendar():
-    print((datetime.strptime("2021-10-17", '%Y-%m-%d') + timedelta(days=1)).strftime("%Y-%m-%d"))
+    print(datetime.today().strftime("%Y-%m-%d"))
 
 def str_function():
     str_list = [

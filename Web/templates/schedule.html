@@ -49,6 +49,18 @@
 <div class="container">
     <div class="page-header">
         <h1 id="messageH1"><code id="messageCode"></code></h1>
+        <hr>
+        <div class="btn-group">
+            <button class="btn btn-link btn-lg dropdown-toggle" type="button" data-toggle="dropdown"
+                    aria-haspopup="true" aria-expanded="false">
+                <span>当前第</span>
+                <span id="weekNowSpan" style="color: #5bc0de"></span>
+                <span>周</span><span class="caret"></span>
+            </button>
+            <ul id="ul" class="dropdown-menu">
+
+            </ul>
+        </div>
         <table id="schedule" class="invisible">
             <thead>
 
@@ -65,10 +77,13 @@
 <script src="../static/js/bootstrap.min.js"></script>
 
 <script>
-    $(function (){
+    week_no_now = 0;
+    $(function () {
         isLogin()
-        getSchedule()
+        getWeekInfo()
+        getSchedule(week_no_now)
     })
+
     function isLogin() {
         $.ajax({
             url: 'console/is_login',
@@ -83,9 +98,35 @@
         })
     }
 
-    function getSchedule() {
+    function getWeekInfo() {
+        $("#ul").empty();
         $.ajax({
-            url: '/console/schedule',
+            url: '/console/week_info',
+            type: 'GET',
+            success: function (data) {
+                if (data.code === 0) {
+                    // 添加到下拉菜单
+                    $("#weekNowSpan").text(data.message.week_now);
+                    week_no_now = data.message.week_now;
+                    for (let i = 1; i < parseInt(data.message.total_weeks) + 1; i++) {
+                        let btn = $("<button></button>").attr('type', 'button').attr('weekNo', i)
+                            .attr('class', 'btn btn-link btn-block weekBtn').append("第" + i + "周");
+                        let li = $("<li></li>");
+                        li.append(btn).appendTo("#ul");
+                    }
+                } else {
+                    alert(data.message);
+                }
+            }
+        });
+        $('#ul').on('click', '.weekBtn', function () {
+            getSchedule($(this).attr("weekNo"));
+        });
+    }
+
+    function getSchedule(week_no) {
+        $.ajax({
+            url: '/console/schedule?week_no=' + week_no,
             type: 'GET',
             success: function (data) {
                 if (data.code === 0) {

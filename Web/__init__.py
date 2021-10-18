@@ -8,6 +8,7 @@ def create_app(config_name='default'):
     app.config.from_object(config[config_name])
     config[config_name].init_app(app)
 
+    app.debug = True # @TODO 上线更改
     models.init_app(app)
     routes.init_app(app)
 
