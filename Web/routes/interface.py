@@ -174,7 +174,6 @@ def login():
     session.permanent = True
     session['login_user_id'] = user_id
     session['login_user_name'] = name
-    # @TODO 引入redis后直接加入消息队列处理数据
     user = User.query.filter_by(j_name = name).first()
     if user.build_status == 1:
         return JsonReturn.success()
@@ -238,11 +237,15 @@ def build_schedule(cookie):
             course_db.session.add(course)
             course_db.session.commit()
             course_id = course.id
+            ucr = UserCourseRelation(user_id = session.get("login_user_id"), course_id = course_id)
+            ucr_db.session.add(ucr)
+            ucr_db.session.commit()
         else:
             course_id = db_course.id
-        ucr = UserCourseRelation(user_id = session.get("login_user_id"), course_id = course_id)
-        ucr_db.session.add(ucr)
-        ucr_db.session.commit()
+            ucr = UserCourseRelation(user_id = session.get("login_user_id"), course_id = course_id)
+            ucr_db.session.add(ucr)
+            ucr_db.session.commit()
+            continue
         # 需要更进一步操作的列表
         if tds[6].get_text(strip = True) == '':
             empty_list.append({
@@ -440,7 +443,7 @@ def schedule():
             "week_day": day.week_day,
             "date": day.date.strftime("%Y-%m-%d")
         })
-    sql = "SELECT c.id, c.no, c.name, c.remark, c.is_special, d.class_start, d.class_end, d.classroom " \
+    sql = "SELECT c.id, c.no, c.name, c.remark, c.is_special, d.class_start, d.class_end, d.classroom, d.weekday " \
           "FROM tb_course c LEFT JOIN tb_detail d ON c.id = d.course_id WHERE c.week_end >= " + str(
         week_no) + " AND c.week_start <= " + str(week_no) + " AND c.season_id = " + str(
         season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0)"
@@ -457,7 +460,8 @@ def schedule():
             'is_special': course[4],
             'class_start': course[5],
             'class_end': course[6],
-            'classroom': course[7]
+            'classroom': course[7],
+            'weekday': course[8]
         })
         if course[4] == 1 and course[0] not in special_id_list:
             special_list.append({

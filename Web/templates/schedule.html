@@ -48,8 +48,6 @@
 <br>
 <div class="container">
     <div class="page-header">
-        <h1 id="messageH1"><code id="messageCode"></code></h1>
-        <hr>
         <div class="btn-group">
             <button class="btn btn-link btn-lg dropdown-toggle" type="button" data-toggle="dropdown"
                     aria-haspopup="true" aria-expanded="false">
@@ -61,15 +59,70 @@
 
             </ul>
         </div>
-        <table id="schedule" class="invisible">
+        <table id="schedule" class="table table-bordered table-hover table-responsive">
             <thead>
+            <tr>
+                <th>#</th>
+                <th>周一</th>
+                <th>周二</th>
+                <th>周三</th>
+                <th>周四</th>
+                <th>周五</th>
+                <th>周六</th>
+                <th>周日</th>
+            </tr>
+            <tr id="dateTr">
 
+            </tr>
+            </thead>
+            <tbody>
+                <tr id="tr1">
+                    <td id="1-0">第 1-4 节<br> 08:00 -- 12:00 </td>
+                    <td id="1-1" class="success"></td>
+                    <td id="2-1" class="info"></td>
+                    <td id="3-1" class="warning"></td>
+                    <td id="4-1" class="success"></td>
+                    <td id="5-1" class="danger"></td>
+                    <td id="6-1" class="warning"></td>
+                    <td id="7-1" class="info"></td>
+                </tr>
+                <tr id="tr2">
+                    <td id="2-0">第 5-8 节<br> 14:00 -- 18:00 </td>
+                    <td id="1-2" class="danger"></td>
+                    <td id="2-2" class="success"></td>
+                    <td id="3-2" class="info"></td>
+                    <td id="4-2" class="warning"></td>
+                    <td id="5-2" class="success"></td>
+                    <td id="6-2" class="danger"></td>
+                    <td id="7-2" class="warning"></td>
+                </tr>
+                <tr id="tr3">
+                    <td id="3-0">第 9-12 节<br> 19:00 -- 22:30 </td>
+                    <td id="1-3" class="success"></td>
+                    <td id="2-3" class="info"></td>
+                    <td id="3-3" class="warning"></td>
+                    <td id="4-3" class="danger"></td>
+                    <td id="5-3" class="info"></td>
+                    <td id="6-3" class="success"></td>
+                    <td id="7-3" class="danger"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <footer class="footer">
+        <h4>备注</h4>
+        <table id="remarkTable" class="table table-bordered table-hover table-responsive">
+            <thead>
+                <tr>
+                    <td>课程名称</td>
+                    <td>备注</td>
+                </tr>
             </thead>
             <tbody>
 
             </tbody>
         </table>
-    </div>
+    </footer>
 </div>
 
 <!-- Bootstrap core JavaScript-->
@@ -77,7 +130,16 @@
 <script src="../static/js/bootstrap.min.js"></script>
 
 <script>
-    week_no_now = 0;
+    let week_no_now = 0;
+    let weekday_obj = {
+        '周一': 1,
+        '周二': 2,
+        '周三': 3,
+        "周四": 4,
+        "周五": 5,
+        '周六': 6,
+        '周日': 7
+    }
     $(function () {
         isLogin()
         getWeekInfo()
@@ -120,20 +182,56 @@
             }
         });
         $('#ul').on('click', '.weekBtn', function () {
+            $("#weekNowSpan").text($(this).attr("weekNo"))
             getSchedule($(this).attr("weekNo"));
         });
     }
 
     function getSchedule(week_no) {
+        $("#remarkTable tbody").empty();
+        $("#dateTr").empty();
+        $("#tr1 td").empty();
+        $("#tr3 td").empty();
+        $("#tr2 td").empty();
+        $("#1-0").append("第 1-4 节<br> 08:00 -- 12:00 ");
+        $("#2-0").append("第 5-8 节<br> 14:00 -- 18:00 ");
+        $("#3-0").append("第 9-12 节<br> 19:00 -- 22:30 ");
         $.ajax({
             url: '/console/schedule?week_no=' + week_no,
             type: 'GET',
             success: function (data) {
                 if (data.code === 0) {
                     // 展示课表
-                    $("#messageH1").attr('class', 'invisible');
-                    // @TODO
-                    $("#schedule").attr('class', 'visible');
+                    $.each(data.message.thead, function (index, data) {
+                        if (index === 0) {
+                            let dateTd = $("<td></td>").append("日期")
+                            $("#dateTr").append(dateTd);
+                        }
+                        let dateTd = $("<td></td>").append(data.date)
+                        $("#dateTr").append(dateTd);
+                    })
+                    $.each(data.message.special, function (index, data) {
+                        let tr = $("<tr></tr>");
+                        let nameTd = $("<td></td>").append(data.name);
+                        let remarkTd = $("<td></td>").append(data.remark);
+                        tr.append(nameTd).append(remarkTd).appendTo("#remarkTable tbody")
+                    })
+                    $.each(data.message.tbody, function (index, data) {
+                        let td = $("<td></td>").append("《"+data.name+"》" +'<br>'+ data.classroom);
+                        let firstNum = weekday_obj[data.weekday];
+                        let secondNum = 0
+                        if (data.class_start === 1) {
+                            secondNum = 1
+                        }
+                        if (data.class_start === 5) {
+                            secondNum = 2
+                        }
+                        if (data.class_start === 9) {
+                            secondNum = 3
+                        }
+                        let id = firstNum + "-" + secondNum;
+                        $("#"+id).append(td);
+                    })
                 } else {
                     $("#messageCode").val(data.message);
                 }
