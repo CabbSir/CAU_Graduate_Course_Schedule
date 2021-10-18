@@ -26,7 +26,7 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <a class="navbar-brand" href="/user_info">中国农业大学研究生课表</a>
+            <a class="navbar-brand" href="/schedule">中国农业大学研究生课表</a>
         </div>
         <div id="navbar" class="collapse navbar-collapse">
             <ul class="nav navbar-nav">
@@ -168,6 +168,8 @@
                     // 已经登录了
                     let a = $("<a></a>").attr('href', '/console/logout').append("登出");
                     a.appendTo("#li");
+                } else {
+                    window.location.href = "/user_info"
                 }
             }
         })
