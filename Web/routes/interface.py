@@ -162,7 +162,7 @@ def login():
         modify_time = int(time.time())
         # 这里存储的是经过md5处理的密码
         user = User(j_name = name, j_passwd = passwd, last_login_ip = ip, last_login_time = login_time,
-                    create_time = create_time, modify_time = modify_time)
+                    create_time = create_time, modify_time = modify_time, build_status = 2)
         user_db.session.add(user)
         user_db.session.commit()
         # 提交后获取自增id
@@ -175,6 +175,9 @@ def login():
     session['login_user_id'] = user_id
     session['login_user_name'] = name
     # @TODO 引入redis后直接加入消息队列处理数据
+    user = User.query.filter_by(j_name = name).first()
+    if user.build_status == 1:
+        return JsonReturn.success()
     result2 = update_calendar(login_cookie)
     result = build_schedule(login_cookie)
     if not result:
@@ -357,6 +360,9 @@ def build_advanced_schedule(class_list, cookie):
                 except Exception as e:
                     detail_db.session.rollback()
                     return False
+    user = User.query.filter_by(id=session.get("login_user_id")).first()
+    user.build_status = 1
+    user_db.session.commit()
     return True
 
 
@@ -440,6 +446,8 @@ def schedule():
         season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0)"
     courses = course_db.session.execute(sql)
     tbody = []
+    special_list = []
+    special_id_list = []
     for course in courses:
         tbody.append({
             'course_id': course[0],
@@ -451,9 +459,16 @@ def schedule():
             'class_end': course[6],
             'classroom': course[7]
         })
+        if course[4] == 1 and course[0] not in special_id_list:
+            special_list.append({
+                'name': course[2],
+                'remark': course[3]
+            })
+            special_id_list.append(course[0])
     return JsonReturn.success({
         'thead': thead,
-        'tbody': tbody
+        'tbody': tbody,
+        'special': special_list
     })
 
 
