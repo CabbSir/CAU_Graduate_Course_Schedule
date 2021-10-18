@@ -220,13 +220,13 @@ def build_schedule(cookie):
         create_time = int(time.time())
         modify_time = int(time.time())
         if tds[6].get_text(strip = True) == '':
-            is_specail = 1
+            is_special = 1
             build_status = 2
         else:
-            is_specail = 2
+            is_special = 2
             build_status = 1
         course = Course(no = no, season_id = season_id, name = name, class_no = class_no, point = point,
-                        week_start = week_start, week_end = week_end, is_special = is_specail,
+                        week_start = week_start, week_end = week_end, is_special = is_special,
                         build_status = build_status, create_time = create_time, modify_time = modify_time)
         # 首先查询数据库看看是否已经有这个课程
         db_course = Course.query.filter_by(no = no, class_no = class_no).first()
@@ -254,8 +254,8 @@ def build_schedule(cookie):
                     continue
                 data = location.split('-')
                 weekday = data[0]
-                class_start = data[1][1]
-                class_end = data[2][0]
+                class_start = data[1].replace('第', '')
+                class_end = data[2].replace('节', '')
                 classroom = data[3]
                 detail = Detail(course_id = course_id, weekday = weekday, class_start = class_start,
                                 class_end = class_end, classroom = classroom, create_time = create_time,
