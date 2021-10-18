@@ -303,7 +303,8 @@ def build_advanced_schedule(class_list, cookie):
             'teacher': '',
             'courseSort': '',
             'week': '',
-            'section': ''
+            'section': '',
+            'pagingNumberPer': 100
         }
         ret = requests.post(url, data, headers = headers)
         soup = BeautifulSoup(ret.text, "html.parser")
