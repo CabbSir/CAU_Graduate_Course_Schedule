@@ -447,11 +447,10 @@ def schedule():
           "FROM tb_course c LEFT JOIN tb_detail d ON c.id = d.course_id INNER JOIN tb_user_course_relation u ON " \
           "c.id = u.course_id WHERE c.week_end >= " + str(week_no) + " AND c.week_start <= " + str(week_no) + \
           " AND c.season_id = " + str(season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0) " \
-          "AND u.user_id=" + str(session.get('login_user_id'))
+                                                                                           "AND u.user_id=" + str(
+        session.get('login_user_id'))
     courses = course_db.session.execute(sql)
     tbody = []
-    special_list = []
-    special_id_list = []
     for course in courses:
         tbody.append({
             'course_id': course[0],
@@ -464,12 +463,16 @@ def schedule():
             'classroom': course[7],
             'weekday': course[8]
         })
-        if course[4] == 1 and course[0] not in special_id_list:
-            special_list.append({
-                'name': course[2],
-                'remark': course[3]
-            })
-            special_id_list.append(course[0])
+    sql = "SELECT DISTINCT (c.name),c.remark FROM tb_course c LEFT JOIN tb_detail d ON c.id=d.course_id INNER JOIN " \
+          "tb_user_course_relation u ON c.id=u.course_id WHERE c.season_id=" + str(season_info.id) + \
+          " AND u.user_id=" + str(session.get('login_user_id')) + " AND c.is_special=1"
+    special_classes = course_db.session.execute(sql)
+    special_list = []
+    for sp in special_classes:
+        special_list.append({
+            'name': sp[0],
+            'remark': sp[1],
+        })
     return JsonReturn.success({
         'thead': thead,
         'tbody': tbody,
