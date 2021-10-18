@@ -363,7 +363,7 @@ def build_advanced_schedule(class_list, cookie):
                 except Exception as e:
                     detail_db.session.rollback()
                     return False
-    user = User.query.filter_by(id=session.get("login_user_id")).first()
+    user = User.query.filter_by(id = session.get("login_user_id")).first()
     user.build_status = 1
     user_db.session.commit()
     return True
@@ -444,9 +444,10 @@ def schedule():
             "date": day.date.strftime("%Y-%m-%d")
         })
     sql = "SELECT c.id, c.no, c.name, c.remark, c.is_special, d.class_start, d.class_end, d.classroom, d.weekday " \
-          "FROM tb_course c LEFT JOIN tb_detail d ON c.id = d.course_id WHERE c.week_end >= " + str(
-        week_no) + " AND c.week_start <= " + str(week_no) + " AND c.season_id = " + str(
-        season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0)"
+          "FROM tb_course c LEFT JOIN tb_detail d ON c.id = d.course_id INNER JOIN tb_user_course_relation u ON " \
+          "c.id = u.course_id WHERE c.week_end >= " + str(week_no) + " AND c.week_start <= " + str(week_no) + \
+          " AND c.season_id = " + str(season_info.id) + " AND (d.`week`=" + str(week_no) + " or d.`week`=0) " \
+          "AND u.user_id=" + str(session.get('login_user_id'))
     courses = course_db.session.execute(sql)
     tbody = []
     special_list = []
