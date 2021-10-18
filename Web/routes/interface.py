@@ -431,6 +431,9 @@ def update_calendar(login_cookie):
 # 展示课表
 @interface_bp.route('/console/schedule')
 def schedule():
+    if not session.get("login_user_id"):
+        # 不存在session
+        return JsonReturn.error(ErrorMap.NOT_LOGGED)
     week_no = int(request.args.get('week_no'))
     season_info = Season.query.filter_by(is_now = 1).first()
     if not week_no:
