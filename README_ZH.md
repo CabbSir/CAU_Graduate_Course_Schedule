@@ -4,6 +4,7 @@
 #### [English Version](./README.md)
 
 ## 网页端
+- [测试站点](https://schedule.cabbsir.com)
 - Flask (后期将会改成golang)
 - Bootstrap
 - Mysql
