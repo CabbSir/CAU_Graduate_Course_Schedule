@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">Cau_schedule</string>
+    <string name="regexp_not_empty">\"^(?=\\s*\\S).*$\"</string>
+    <string name="verifycode">验证码</string>
+    <string name="password">教务密码</string>
+    <string name="username">教务用户名</string>
 </resources>
