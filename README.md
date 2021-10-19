@@ -9,7 +9,7 @@ Graduate Course Schedule of China Agricultural University (web only, app in prog
 - Bootstrap
 - Mysql
 
-## Android APP (In progress)
+## Android APP (Deprecated)
 
 ## Data acquisition process
 - get cookie
