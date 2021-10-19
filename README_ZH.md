@@ -9,7 +9,7 @@
 - Bootstrap
 - Mysql
 
-## Android APP (开发中)
+## Android APP (弃用)
 
 ## 数据获取
 - 获取cookie
